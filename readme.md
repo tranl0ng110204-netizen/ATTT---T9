@@ -1,46 +1,37 @@
-# Dự án Spring Boot + React (Cấu trúc Tinh Gọn)
+# Dự Án Tối Giản: Spring Boot + React (Import Trực Tiếp)
 
-Dự án được thiết lập tinh gọn, nhẹ máy và dễ phát triển:
-- **Backend**: Java 21 + Spring Boot 3 (chỉ dùng Web Starter cơ bản).
-- **Frontend**: React + Vite (không phụ thuộc thư viện rườm rà).
+Cấu trúc siêu nhẹ, không cần `node_modules`, không cần `npm`:
 
 ---
 
-## 🚀 Hướng Dẫn Chạy Dự Án
+## 📁 Cấu Trúc File
 
-### 1. Chạy Backend (Spring Boot - Port 8080)
-Mở một cửa sổ Terminal:
-```bash
-cd backend
-./mvnw.cmd spring-boot:run
-```
-*(Hoặc mở thư mục `backend` bằng IntelliJ IDEA / Eclipse / VS Code và nhấn Run `DemoApplication.java`)*
-
-- API kiểm tra: `http://localhost:8080/api/hello`
-
----
-
-### 2. Chạy Frontend (React + Vite - Port 5173)
-Mở một cửa sổ Terminal khác:
-```bash
-cd frontend
-npm run dev
-```
-- Mở trình duyệt tại: `http://localhost:5173`
-
----
-
-## 📁 Cấu Trúc File Chính
 ```
 ATTT---T9/
 ├── backend/
-│   ├── pom.xml                                               # Quản lý dependency Maven tối giản
+│   ├── pom.xml                                               # Quản lý Spring Boot
+│   ├── mvnw / mvnw.cmd                                       # Maven Wrapper chạy trực tiếp
 │   └── src/main/java/com/example/demo/
-│       ├── DemoApplication.java                              # Điểm khởi chạy Spring Boot
-│       └── controller/ApiController.java                     # Viết các API REST tại đây
-└── frontend/
-    ├── package.json                                          # Quản lý thư viện React/Vite
-    └── src/
-        ├── App.jsx                                           # Giao diện chính kết nối Backend
-        └── App.css                                           # Giao diện CSS thuần nhẹ nhàng
+│       ├── DemoApplication.java                              # Spring Boot Main
+│       └── resources/application.properties                  # Cấu hình port 8080
+└── frontend/                                                 # React import trực tiếp qua CDN (0 MB cài đặt)
+    ├── index.html                                            # File HTML import React & Babel
+    ├── app.js                                                # Code React JSX chính
+    └── style.css                                             # CSS giao diện
 ```
+
+---
+
+## 🚀 Cách Chạy
+
+### 1. Frontend:
+- Click đúp chuột mở trực tiếp file [`frontend/index.html`](file:///d:/ATTT---T9/frontend/index.html) bằng trình duyệt (hoặc dùng Live Server).
+- Không cần cài `npm`, không cần `node_modules`.
+
+### 2. Backend:
+- Mở terminal:
+  ```powershell
+  cd backend
+  .\mvnw.cmd spring-boot:run
+  ```
+  *(Hoặc mở và nhấn Run trong IntelliJ/Eclipse/VS Code)*
