@@ -5,6 +5,8 @@ export default function Header({ isCollapsed, setIsCollapsed, activeTab }) {
   const getTabTitle = () => {
     switch (activeTab) {
       case 'dashboard': return { title: 'Bảng Giám Sát An Toàn Thông Tin', sub: 'Theo dõi lưu lượng truy cập và cảnh báo an ninh thời gian thực' };
+      case 'assessments': return { title: 'Quản Lý Đánh Giá An Ninh & Quét Lỗ Hổng', sub: 'Danh sách và trạng thái các cuộc đánh giá mục tiêu Web / Server' };
+      case 'create-assessment': return { title: 'Khởi Tạo Cuộc Đánh Giá An Ninh Mới', sub: 'Cấu hình mục tiêu, phạm vi quét và kích hoạt công cụ phân tích' };
       case 'users': return { title: 'Quản Lý Người Dùng & Phân Quyền', sub: 'Kiểm soát tài khoản, vai trò và quyền hạn truy cập (RBAC)' };
       case 'logs': return { title: 'Nhật Ký Kiểm Toán & Sự Cố An Ninh', sub: 'Ghi nhận và phân tích lịch sử các cuộc gọi API' };
       case 'security': return { title: 'Chính Sách & Tham Số Bảo Mật', sub: 'Cấu hình thời hạn JWT, quy tắc tường lửa và bảo vệ tài nguyên' };
