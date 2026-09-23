@@ -1,6 +1,6 @@
 package com.example.backend.entity.Enum;
 
-public enum TargetType {
+public enum AssessmentType {
     SERVER,
     WEB
 }
