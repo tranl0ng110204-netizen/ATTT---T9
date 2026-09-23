@@ -12,6 +12,8 @@ export default function Sidebar({ isCollapsed, activeTab, setActiveTab }) {
 
   const menuItems = [
     { id: 'dashboard', title: 'Tổng Quan Hệ Thống', icon: 'fa-solid fa-chart-line', category: 'GIÁM SÁT' },
+    { id: 'assessments', title: 'Danh Sách Assessment', icon: 'fa-solid fa-shield-virus', badge: 'Core', category: 'ĐÁNH GIÁ AN NINH' },
+    { id: 'create-assessment', title: 'Tạo Assessment Mới', icon: 'fa-solid fa-plus-circle', category: 'ĐÁNH GIÁ AN NINH' },
     { id: 'users', title: 'Quản Lý Người Dùng', icon: 'fa-solid fa-users-gear', category: 'QUẢN TRỊ' },
     { id: 'logs', title: 'Nhật Ký Bảo Mật', icon: 'fa-solid fa-shield-halved', badge: 'Live', category: 'GIÁM SÁT' },
     { id: 'security', title: 'Chính Sách & Cấu Hình', icon: 'fa-solid fa-sliders', category: 'HỆ THỐNG' },
