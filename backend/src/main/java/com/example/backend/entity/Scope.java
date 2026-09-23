@@ -1,14 +1,11 @@
 package com.example.backend.entity;
-import com.example.backend.entity.Enum.TargetType;
+import com.example.backend.entity.Enum.AssessmentType;
+import com.example.backend.entity.Enum.ScopeType;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-
 @Entity
-@Table(name = "scope")
+@Table(name = "scopes")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -30,9 +27,20 @@ public class Scope {
     private String target;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "target_type", nullable = false)
-    private TargetType targetType;
+    @Column(
+            name = "target_type",
+            nullable = false,
+            length = 20
+    )
+    private ScopeType targetType;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }
