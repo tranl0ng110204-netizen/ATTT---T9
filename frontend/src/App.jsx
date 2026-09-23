@@ -3,13 +3,15 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import ToastNotification from './components/ToastNotification';
 import DashboardView from './views/DashboardView';
+import AssessmentsView from './views/AssessmentsView';
+import CreateAssessmentView from './views/CreateAssessmentView';
 import UsersView from './views/UsersView';
 import AuditLogsView from './views/AuditLogsView';
 import SecurityConfigView from './views/SecurityConfigView';
 
 export default function App() {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('assessments');
 
   return (
     <div className="app-container">
@@ -35,6 +37,13 @@ export default function App() {
         {/* 3. Content Area hiển thị động */}
         <main className="content-area">
           {activeTab === 'dashboard' && <DashboardView setActiveTab={setActiveTab} />}
+          {activeTab === 'assessments' && <AssessmentsView setActiveTab={setActiveTab} />}
+          {activeTab === 'create-assessment' && (
+            <CreateAssessmentView
+              onCreated={() => setActiveTab('assessments')}
+              onCancel={() => setActiveTab('assessments')}
+            />
+          )}
           {activeTab === 'users' && <UsersView />}
           {activeTab === 'logs' && <AuditLogsView />}
           {activeTab === 'security' && <SecurityConfigView />}
