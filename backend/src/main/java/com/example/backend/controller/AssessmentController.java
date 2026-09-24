@@ -2,7 +2,10 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.AssessmentRequest;
 import com.example.backend.dto.AssessmentResponse;
+import com.example.backend.entity.Assessment;
+import com.example.backend.repository.AssessmentRepository;
 import com.example.backend.service.AssessmentService;
+import com.example.backend.service.ScanService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,6 +20,8 @@ import java.util.List;
 public class AssessmentController {
 
     private final AssessmentService assessmentService;
+    private final AssessmentRepository assessmentRepository;
+    private final ScanService scanService;
 
     /**
      * Tạo phiên kiểm thử mới
@@ -46,5 +51,19 @@ public class AssessmentController {
     @GetMapping("/{id}")
     public ResponseEntity<AssessmentResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(assessmentService.getById(id));
+    }
+
+    @PostMapping("/{id}/scan")
+    public ResponseEntity<String> startScan(@PathVariable Long id){
+        Assessment assessment = assessmentRepository.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException("Assessment not found"));
+        if(assessment.getScopes().isEmpty()){
+            throw new RuntimeException("Assessment has no target");
+        }
+        String target = assessment.getScopes().get(0).getTarget();
+        String result = scanService.scan(target);
+
+        return ResponseEntity.ok(result);
     }
 }
