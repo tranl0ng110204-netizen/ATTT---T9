@@ -93,6 +93,7 @@ public class AssessmentService {
                 entity.getId(),
                 entity.getName(),
                 entity.getType(),
+                entity.getStatus(),
                 entity.getCreatedAt()
         );
     }

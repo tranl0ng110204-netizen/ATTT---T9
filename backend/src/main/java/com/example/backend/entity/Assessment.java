@@ -1,5 +1,6 @@
 package com.example.backend.entity;
 
+import com.example.backend.entity.Enum.AssessmentStatus;
 import com.example.backend.entity.Enum.AssessmentType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -26,6 +27,11 @@ public class Assessment {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AssessmentType type;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private AssessmentStatus status = AssessmentStatus.CREATED;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

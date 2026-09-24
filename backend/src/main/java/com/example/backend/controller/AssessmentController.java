@@ -2,6 +2,7 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.AssessmentRequest;
 import com.example.backend.dto.AssessmentResponse;
+import com.example.backend.dto.ScanResultResponse;
 import com.example.backend.entity.Assessment;
 import com.example.backend.repository.AssessmentRepository;
 import com.example.backend.service.AssessmentService;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/assessments")
@@ -20,7 +22,6 @@ import java.util.List;
 public class AssessmentController {
 
     private final AssessmentService assessmentService;
-    private final AssessmentRepository assessmentRepository;
     private final ScanService scanService;
 
     /**
@@ -53,17 +54,22 @@ public class AssessmentController {
         return ResponseEntity.ok(assessmentService.getById(id));
     }
 
+    /**
+     * Khởi động quét trinh sát cho một Assessment
+     * POST /api/assessments/{id}/scan
+     */
     @PostMapping("/{id}/scan")
-    public ResponseEntity<String> startScan(@PathVariable Long id){
-        Assessment assessment = assessmentRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Assessment not found"));
-        if(assessment.getScopes().isEmpty()){
-            throw new RuntimeException("Assessment has no target");
-        }
-        String target = assessment.getScopes().get(0).getTarget();
-        String result = scanService.scan(target);
-
-        return ResponseEntity.ok(result);
+    public ResponseEntity<Map<String, String>> startScan(@PathVariable Long id) {
+        scanService.startScan(id);
+        return ResponseEntity.accepted()
+                .body(Map.of("message", "Đã bắt đầu quét. Kiểm tra kết quả qua GET /api/assessments/" + id + "/scan-results"));
+    }
+    /**
+     * Xem kết quả quét của một Assessment
+     * GET /api/assessments/{id}/scan-results
+     */
+    @GetMapping("/{id}/scan-results")
+    public ResponseEntity<List<ScanResultResponse>> getScanResults(@PathVariable Long id) {
+        return ResponseEntity.ok(scanService.getResults(id));
     }
 }

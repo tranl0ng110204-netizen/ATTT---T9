@@ -20,17 +20,16 @@ services:
   kali-worker:
     build:
       context: ./docker/kali-worker
-
     container_name: kali-worker
-
     restart: unless-stopped
-
     tty: true
     stdin_open: true
-
     networks:
       - security-network
-      
+    volumes:
+      # Ánh xạ thư mục chứa script vào trong Kali
+      - ./backend/src/main/resources/scripts:/scripts
+    
 networks:
   security-network:
 
