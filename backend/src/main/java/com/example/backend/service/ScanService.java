@@ -6,12 +6,15 @@ import com.example.backend.entity.Enum.AssessmentType;
 import com.example.backend.entity.ScanResult;
 import com.example.backend.repository.AssessmentRepository;
 import com.example.backend.repository.ScanResultRepository;
+import com.example.backend.util.GobusterParser;
+import com.example.backend.util.NmapXmlParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,6 +26,9 @@ import java.util.concurrent.TimeUnit;
 public class ScanService {
     private final AssessmentRepository assessmentRepository;
     private final ScanResultRepository scanResultRepository;
+    private final NmapXmlParser nmapXmlParser;
+    private final GobusterParser gobusterParser;
+
     /**
      * Khởi động quét bất đồng bộ cho một Assessment
      */
@@ -118,6 +124,13 @@ public class ScanService {
             result.setRawOutput(output);
             result.setStatus(status);
             result.setFinishedAt(LocalDateTime.now());
+
+            // ★ Tự động parse kết quả nếu thành công
+            if ("SUCCESS".equals(status) && output != null) {
+                String parsedJson = parseOutput(result.getToolName(), output);
+                result.setParsedData(parsedJson);
+            }
+
             scanResultRepository.save(result);
         }
         // Cập nhật trạng thái Assessment
@@ -128,6 +141,22 @@ public class ScanService {
         }
         log.info("Quét xong [{}] - Trạng thái: {}", scanResultId, status);
     }
+
+    private String parseOutput(String toolName, String output) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            return switch (toolName) {
+                case "NMAP" -> mapper.writeValueAsString(nmapXmlParser.parse(output));
+                case "GOBUSTER" -> mapper.writeValueAsString(gobusterParser.parse(output));
+                default -> null;
+            };
+        } catch (Exception e) {
+            log.error("Lỗi khi parse output của {}: {}", toolName, e.getMessage());
+            return null;
+        }
+    }
+
+
     /**
      * Lấy danh sách kết quả quét của một Assessment
      */

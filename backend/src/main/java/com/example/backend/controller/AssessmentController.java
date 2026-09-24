@@ -72,4 +72,26 @@ public class AssessmentController {
     public ResponseEntity<List<ScanResultResponse>> getScanResults(@PathVariable Long id) {
         return ResponseEntity.ok(scanService.getResults(id));
     }
+
+    /**
+     * Xem kết quả quét đã được parse (dạng JSON có cấu trúc)
+     * GET /api/assessments/{id}/scan-results/parsed
+     */
+    @GetMapping("/{id}/scan-results/parsed")
+    public ResponseEntity<?> getParsedResults(@PathVariable Long id) {
+        List<ScanResultResponse> results = scanService.getResults(id);
+        // Chỉ lấy các kết quả SUCCESS có parsedData
+        var parsed = results.stream()
+                .filter(r -> "SUCCESS".equals(r.status()) && r.parsedData() != null)
+                .map(r -> Map.of(
+                        "id", r.id(),
+                        "tool", r.toolName(),
+                        "target", r.target(),
+                        "startedAt", r.startedAt(),
+                        "finishedAt", r.finishedAt(),
+                        "result", r.parsedData()   // JSON string đã parse sẵn
+                ))
+                .toList();
+        return ResponseEntity.ok(parsed);
+    }
 }
