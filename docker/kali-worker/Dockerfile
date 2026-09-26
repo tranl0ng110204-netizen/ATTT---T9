@@ -8,7 +8,12 @@ RUN apt-get update && \
     gobuster \
     dirb \
     curl \
-    iputils-ping && \
+    iputils-ping \
+    nikto \
+    sslscan \
+    whatweb \
+    wafw00f \
+    dirsearch && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

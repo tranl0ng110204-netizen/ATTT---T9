@@ -1,4 +1,5 @@
 package com.example.backend.service;
+
 import com.example.backend.dto.ScanResultResponse;
 import com.example.backend.entity.Assessment;
 import com.example.backend.entity.Enum.AssessmentStatus;
@@ -6,11 +7,12 @@ import com.example.backend.entity.Enum.AssessmentType;
 import com.example.backend.entity.ScanResult;
 import com.example.backend.repository.AssessmentRepository;
 import com.example.backend.repository.ScanResultRepository;
-import com.example.backend.util.GobusterParser;
-import com.example.backend.util.NmapXmlParser;
+import com.example.backend.util.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -28,53 +31,68 @@ public class ScanService {
     private final ScanResultRepository scanResultRepository;
     private final NmapXmlParser nmapXmlParser;
     private final GobusterParser gobusterParser;
+    private final NiktoParser niktoParser;
+    private final SslscanParser sslscanParser;
+    private final WhatwebParser whatwebParser;
+    private final Wafw00fParser wafw00fParser;
+    private final DirsearchParser dirsearchParser;
 
-    /**
-     * Khởi động quét bất đồng bộ cho một Assessment
-     */
+    @Lazy
+    @Autowired
+    private ScanService self;
+
+    private static final Map<AssessmentType, List<String>> TOOL_SETS = Map.of(
+            AssessmentType.WEB, List.of(
+                    "NMAP", "GOBUSTER", "NIKTO", "SSLSCAN",
+                    "WHATWEB", "WAFW00F", "DIRSEARCH"
+            ),
+            AssessmentType.SERVER, List.of(
+                    "NMAP"
+            )
+    );
+
     @Transactional
     public void startScan(Long assessmentId) {
         Assessment assessment = assessmentRepository.findById(assessmentId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Không tìm thấy Assessment ID: " + assessmentId));
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay Assessment ID: " + assessmentId));
         if (assessment.getScopes().isEmpty()) {
-            throw new IllegalArgumentException("Assessment chưa có mục tiêu (scope)");
+            throw new IllegalArgumentException("Assessment chua co muc tieu (scope)");
         }
-        // Cập nhật trạng thái
+
         assessment.setStatus(AssessmentStatus.SCANNING);
         assessmentRepository.save(assessment);
+
         String target = assessment.getScopes().get(0).getTarget();
-        String toolName = (assessment.getType() == AssessmentType.WEB) ? "GOBUSTER" : "NMAP";
-        // Tạo record theo dõi
-        ScanResult scanResult = ScanResult.builder()
-                .assessment(assessment)
-                .toolName(toolName)
-                .target(target)
-                .status("RUNNING")
-                .build();
-        scanResultRepository.save(scanResult);
-        // Chạy quét ngầm
-        executeScanAsync(scanResult.getId(), assessment.getId(), toolName, target);
+        List<String> tools = TOOL_SETS.getOrDefault(assessment.getType(), List.of("NMAP"));
+
+        for (String toolName : tools) {
+            ScanResult scanResult = ScanResult.builder()
+                    .assessment(assessment)
+                    .toolName(toolName)
+                    .target(target)
+                    .status("RUNNING")
+                    .build();
+            scanResultRepository.save(scanResult);
+
+            self.executeScanAsync(scanResult.getId(), assessment.getId(), toolName, target);
+        }
     }
-    /**
-     * Chạy script wrapper trong Kali Worker (Async)
-     */
+
     @Async
     public void executeScanAsync(Long scanResultId, Long assessmentId,
                                  String toolName, String target) {
         try {
             List<String> command = buildCommand(toolName, target);
-            log.info("Bắt đầu quét [{}] mục tiêu: {}", toolName, target);
+            log.info("Bat dau quet [{}] muc tieu: {}", toolName, target);
             ProcessBuilder pb = new ProcessBuilder(command);
-            pb.redirectErrorStream(true); // Gộp lỗi và kết quả làm một
+            pb.redirectErrorStream(true);
 
             java.io.File tempFile = java.io.File.createTempFile("scan_result_", ".tmp");
             pb.redirectOutput(tempFile);
 
-
             Process process = pb.start();
 
-            boolean finished = process.waitFor(300, TimeUnit.SECONDS);
+            boolean finished = process.waitFor(900, TimeUnit.SECONDS);
             String output;
             if (!finished) {
                 process.destroyForcibly();
@@ -83,7 +101,7 @@ public class ScanService {
                 return;
             }
             output = java.nio.file.Files.readString(tempFile.toPath());
-            tempFile.delete(); // Đọc xong thì xóa file tạm đi
+            tempFile.delete();
 
             if (process.exitValue() != 0) {
                 updateScanResult(scanResultId, assessmentId, output, "FAILED");
@@ -91,31 +109,25 @@ public class ScanService {
             }
             updateScanResult(scanResultId, assessmentId, output, "SUCCESS");
         } catch (Exception e) {
-            log.error("Lỗi khi quét: {}", e.getMessage(), e);
-            updateScanResult(scanResultId, assessmentId,
-                    "ERROR: " + e.getMessage(), "FAILED");
+            log.error("Loi khi quet [{}]: {}", toolName, e.getMessage(), e);
+            updateScanResult(scanResultId, assessmentId, "ERROR: " + e.getMessage(), "FAILED");
         }
     }
-    /**
-     * Xây dựng câu lệnh tùy thuộc vào loại tool
-     */
+
     private List<String> buildCommand(String toolName, String target) {
-        return switch (toolName) {
-            // Gọi bash script wrapper — script đã được tối ưu cờ, không dùng -sV
-            case "NMAP" -> List.of(
-                    "docker", "exec", "kali-worker",
-                    "bash", "/scripts/run_nmap.sh", target
-            );
-            case "GOBUSTER" -> List.of(
-                    "docker", "exec", "kali-worker",
-                    "bash", "/scripts/run_gobuster.sh", target
-            );
-            default -> throw new IllegalArgumentException("Tool không được hỗ trợ: " + toolName);
+        String script = switch (toolName) {
+            case "NMAP"       -> "run_nmap.sh";
+            case "GOBUSTER"   -> "run_gobuster.sh";
+            case "NIKTO"      -> "run_nikto.sh";
+            case "SSLSCAN"    -> "run_sslscan.sh";
+            case "WHATWEB"    -> "run_whatweb.sh";
+            case "WAFW00F"    -> "run_wafw00f.sh";
+            case "DIRSEARCH"  -> "run_dirsearch.sh";
+            default -> throw new IllegalArgumentException("Tool khong duoc ho tro: " + toolName);
         };
+        return List.of("docker", "exec", "kali-worker", "bash", "/scripts/" + script, target);
     }
-    /**
-     * Cập nhật kết quả quét vào DB
-     */
+
     @Transactional
     public void updateScanResult(Long scanResultId, Long assessmentId,
                                  String output, String status) {
@@ -125,55 +137,54 @@ public class ScanService {
             result.setStatus(status);
             result.setFinishedAt(LocalDateTime.now());
 
-            // ★ Tự động parse kết quả nếu thành công
             if ("SUCCESS".equals(status) && output != null) {
                 String parsedJson = parseOutput(result.getToolName(), output);
                 result.setParsedData(parsedJson);
             }
-
             scanResultRepository.save(result);
         }
-        // Cập nhật trạng thái Assessment
-        Assessment assessment = assessmentRepository.findById(assessmentId).orElse(null);
-        if (assessment != null) {
-            assessment.setStatus(AssessmentStatus.SCAN_COMPLETED);
-            assessmentRepository.save(assessment);
+
+        checkAndUpdateAssessmentStatus(assessmentId);
+        log.info("Quet xong [{}] tool={} - Trang thai: {}", scanResultId, result != null ? result.getToolName() : "?", status);
+    }
+
+    private void checkAndUpdateAssessmentStatus(Long assessmentId) {
+        List<ScanResult> allResults = scanResultRepository.findByAssessmentId(assessmentId);
+        boolean allDone = allResults.stream().noneMatch(r -> "RUNNING".equals(r.getStatus()));
+
+        if (allDone) {
+            Assessment assessment = assessmentRepository.findById(assessmentId).orElse(null);
+            if (assessment != null) {
+                assessment.setStatus(AssessmentStatus.SCAN_COMPLETED);
+                assessmentRepository.save(assessment);
+                log.info("Assessment {} - Tat ca tool da quet xong", assessmentId);
+            }
         }
-        log.info("Quét xong [{}] - Trạng thái: {}", scanResultId, status);
     }
 
     private String parseOutput(String toolName, String output) {
         try {
             ObjectMapper mapper = new ObjectMapper();
             return switch (toolName) {
-                case "NMAP" -> mapper.writeValueAsString(nmapXmlParser.parse(output));
-                case "GOBUSTER" -> mapper.writeValueAsString(gobusterParser.parse(output));
+                case "NMAP"      -> mapper.writeValueAsString(nmapXmlParser.parse(output));
+                case "GOBUSTER"  -> mapper.writeValueAsString(gobusterParser.parse(output));
+                case "NIKTO"     -> mapper.writeValueAsString(niktoParser.parse(output));
+                case "SSLSCAN"   -> mapper.writeValueAsString(sslscanParser.parse(output));
+                case "WHATWEB"   -> mapper.writeValueAsString(whatwebParser.parse(output));
+                case "WAFW00F"   -> mapper.writeValueAsString(wafw00fParser.parse(output));
+                case "DIRSEARCH" -> mapper.writeValueAsString(dirsearchParser.parse(output));
                 default -> null;
             };
         } catch (Exception e) {
-            log.error("Lỗi khi parse output của {}: {}", toolName, e.getMessage());
+            log.error("Loi khi parse output cua {}: {}", toolName, e.getMessage());
             return null;
         }
     }
 
-
-    /**
-     * Lấy danh sách kết quả quét của một Assessment
-     */
     @Transactional(readOnly = true)
     public List<ScanResultResponse> getResults(Long assessmentId) {
-        return scanResultRepository.findByAssessmentId(assessmentId)
-                .stream()
-                .map(r -> new ScanResultResponse(
-                        r.getId(),
-                        r.getToolName(),
-                        r.getTarget(),
-                        r.getRawOutput(),
-                        r.getParsedData(),
-                        r.getStatus(),
-                        r.getStartedAt(),
-                        r.getFinishedAt()
-                ))
+        return scanResultRepository.findByAssessmentId(assessmentId).stream()
+                .map(r -> new ScanResultResponse(r.getId(), r.getToolName(), r.getTarget(), r.getRawOutput(), r.getParsedData(), r.getStatus(), r.getStartedAt(), r.getFinishedAt()))
                 .toList();
     }
 }
