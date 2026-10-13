@@ -3,8 +3,9 @@ package com.example.backend.controller;
 import com.example.backend.dto.AssessmentRequest;
 import com.example.backend.dto.AssessmentResponse;
 import com.example.backend.dto.ScanResultResponse;
-import com.example.backend.entity.Assessment;
-import com.example.backend.repository.AssessmentRepository;
+import com.example.backend.dto.ActionStepResponse;
+import com.example.backend.dto.FindingResponse;
+import com.example.backend.service.AnalyzeService;
 import com.example.backend.service.AssessmentService;
 import com.example.backend.service.ScanService;
 import jakarta.validation.Valid;
@@ -23,6 +24,7 @@ public class AssessmentController {
 
     private final AssessmentService assessmentService;
     private final ScanService scanService;
+    private final AnalyzeService analyzerService;
 
     /**
      * Tạo phiên kiểm thử mới
@@ -94,4 +96,59 @@ public class AssessmentController {
                 .toList();
         return ResponseEntity.ok(parsed);
     }
+
+    @PostMapping("/{id}/analyze")
+    public ResponseEntity<?> analyzeWithAi(@PathVariable Long id) {
+        // Trả về JSON string thuần mà AI sinh ra
+        String aiJson = analyzerService.runAnalysis(id);
+
+        // Vì aiJson đã là chuỗi JSON chuẩn, ta parse nó ra kiểu Map để ResponseEntity serialize đẹp đẽ
+        try {
+            // Thay com.fasterxml bằng tools (Jackson 3)
+            tools.jackson.databind.ObjectMapper mapper = new tools.jackson.databind.ObjectMapper();
+            Object jsonNode = mapper.readValue(aiJson, Object.class);
+            return ResponseEntity.ok(jsonNode);
+        } catch (Exception e) {
+            // Nếu AI vô tình sinh lỗi không phải JSON, trả về raw text
+            return ResponseEntity.ok(Map.of("raw_ai_response", aiJson));
+        }
+    }
+
+    /**
+     * Lấy danh sách các lỗ hổng đã được AI phân tích (DTO sạch)
+     * GET /api/assessments/{id}/findings
+     */
+    @GetMapping("/{id}/findings")
+    public ResponseEntity<List<FindingResponse>> getFindings(@PathVariable Long id) {
+        List<FindingResponse> findings = analyzerService.getFindings(id).stream()
+                .map(f -> new FindingResponse(
+                        f.getId(),
+                        f.getTitle(),
+                        f.getSeverity(),
+                        f.getDescription(),
+                        f.getTool(),
+                        f.getCreatedAt()
+                ))
+                .toList();
+        return ResponseEntity.ok(findings);
+    }
+    /**
+     * Lấy danh sách các bước hành động/kế hoạch tấn công mà AI đề xuất (DTO sạch)
+     * GET /api/assessments/{id}/plans
+     */
+    @GetMapping("/{id}/plans")
+    public ResponseEntity<List<ActionStepResponse>> getActionPlans(@PathVariable Long id) {
+        List<ActionStepResponse> plans = analyzerService.getActionSteps(id).stream()
+                .map(a -> new ActionStepResponse(
+                        a.getId(),
+                        a.getToolName(),
+                        a.getTarget(),
+                        a.getReason(),
+                        a.getStatus(),
+                        a.getCreatedAt()
+                ))
+                .toList();
+        return ResponseEntity.ok(plans);
+    }
+
 }
