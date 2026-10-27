@@ -2,6 +2,8 @@ package com.example.backend.controller;
 
 
 import com.example.backend.dto.ActionStepResponse;
+import com.example.backend.dto.ExecutionLogResponse;
+import com.example.backend.dto.ExecutionResult;
 import com.example.backend.dto.PolicyResult;
 import com.example.backend.service.ActionStepService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,21 @@ public class ActionStepController {
     @GetMapping("/{id}/policy-check")
     public ResponseEntity<PolicyResult> checkPolicy(@PathVariable Long id) {
         return ResponseEntity.ok(actionStepService.checkPolicy(id));
+    }
+
+    @PostMapping("/{id}/execute")
+    public ResponseEntity<ExecutionResult> execute(@PathVariable Long id) {
+        ExecutionResult result = actionStepService.executeAction(id);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Lấy toàn bộ Log terminal và kết quả thực thi đã lưu
+     * GET /api/actions/{id}/result
+     */
+    @GetMapping("/{id}/result")
+    public ResponseEntity<ExecutionLogResponse> getExecutionResult(@PathVariable Long id) {
+        return ResponseEntity.ok(actionStepService.getExecutionResult(id));
     }
 
 
