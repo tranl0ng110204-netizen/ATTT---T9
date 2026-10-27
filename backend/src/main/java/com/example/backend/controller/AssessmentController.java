@@ -5,8 +5,10 @@ import com.example.backend.dto.AssessmentResponse;
 import com.example.backend.dto.ScanResultResponse;
 import com.example.backend.dto.ActionStepResponse;
 import com.example.backend.dto.FindingResponse;
+import com.example.backend.dto.attackpathnode.AttackPathResponse;
 import com.example.backend.service.AnalyzeService;
 import com.example.backend.service.AssessmentService;
+import com.example.backend.service.AttackPathService;
 import com.example.backend.service.ScanService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ public class AssessmentController {
     private final AssessmentService assessmentService;
     private final ScanService scanService;
     private final AnalyzeService analyzerService;
+    private final AttackPathService attackPathService;
 
     /**
      * Tạo phiên kiểm thử mới
@@ -149,6 +152,15 @@ public class AssessmentController {
                 ))
                 .toList();
         return ResponseEntity.ok(plans);
+    }
+
+    /**
+     * Lấy biểu đồ chuỗi luồng tấn công (Attack Path) hoàn chỉnh
+     * GET /api/assessments/{id}/attack-path
+     */
+    @GetMapping("/{id}/attack-path")
+    public ResponseEntity<AttackPathResponse> getAttackPath(@PathVariable Long id) {
+        return ResponseEntity.ok(attackPathService.buildAttackPath(id));
     }
 
 }
